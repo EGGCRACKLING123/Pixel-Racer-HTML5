@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speed Rush - Endless Racing</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+:where([class^="ri-"])::before { content: "\f3c2"; }
+.glow {
+box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+@keyframes roadScroll {
+from { background-position: 0 0; }
+to { background-position: 0 600px; }
+}
+.road {
+background-image:
+linear-gradient(90deg, transparent 0%, transparent 2%, #fff 2%, #fff 3%, transparent 3%, transparent 97%, #fff 97%, #fff 98%, transparent 98%),
+linear-gradient(90deg, transparent 23%, #fff 23%, #fff 24%, transparent 24%, transparent 48%, #fff 48%, #fff 49%, transparent 49%, transparent 73%, #fff 73%, #fff 74%, transparent 74%),
+linear-gradient(0deg, #333 0px, #333 50px, #444 50px, #444 100px);
+animation: roadScroll 1s linear infinite;
+animation-duration: calc(1s * (60 / var(--speed, 60)));
+}
+.car {
+transition: left 0.2s ease-out;
+background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 80"><path d="M10,60 L38,60 L42,40 L6,40 L10,60 Z M12,40 L36,40 L36,20 L12,20 L12,40 Z" fill="%23FF3366"/><rect x="8" y="60" width="8" height="12" rx="4" fill="%23333"/><rect x="32" y="60" width="8" height="12" rx="4" fill="%23333"/></svg>');
+background-size: contain;
+background-repeat: no-repeat;
+}
+.traffic-car {
+transition: top 0.1s linear;
+background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 80"><path d="M8,20 L40,20 C42,20 44,22 44,24 L44,56 C44,58 42,60 40,60 L8,60 C6,60 4,58 4,56 L4,24 C4,22 6,20 8,20 Z" fill="%23FF4444"/><path d="M12,25 L36,25 L36,45 L12,45 Z" fill="%23333"/><rect x="8" y="60" width="8" height="12" rx="4" fill="%23333"/><rect x="32" y="60" width="8" height="12" rx="4" fill="%23333"/></svg>');
+background-size: contain;
+background-repeat: no-repeat;
+transform: rotate(180deg);
+}
+.coin {
+width: 20px;
+height: 20px;
+background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="%23FFD700"/><text x="10" y="14" text-anchor="middle" font-size="12" fill="%23B8860B">$</text></svg>');
+background-size: contain;
+position: absolute;
+animation: coinSpin 1s infinite linear;
+}
+@keyframes coinSpin {
+from { transform: rotateY(0deg); }
+to { transform: rotateY(360deg); }
+}
+</style>
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+primary: '#FF3366',
+secondary: '#2D3748'
+},
+borderRadius: {
+'none': '0px',
+'sm': '4px',
+DEFAULT: '8px',
+'md': '12px',
+'lg': '16px',
+'xl': '20px',
+'2xl': '24px',
+'3xl': '32px',
+'full': '9999px',
+'button': '8px'
+}
+}
+}
+}
+</script>
+</head>
+<body class="bg-gray-900 h-screen flex items-center justify-center overflow-hidden">
+<div class="relative w-[375px] h-[667px] bg-gray-800 overflow-hidden">
+<div id="gameCanvas" class="road absolute inset-0">
+<div id="score" class="absolute top-4 right-4 text-white font-bold">
+Score: <span id="scoreValue">0</span><br>
+High Score: <span id="highScoreValue">0</span>
+</div>
+<div id="coins" class="absolute top-12 right-4 text-white font-bold">
+Coins: <span id="coinsValue">0</span>
+</div>
+<div id="speed" class="absolute bottom-4 right-4 text-white">
+<span id="speedValue">60</span> km/h
+</div>
+<div id="car" class="car absolute bottom-24 left-1/2 -translate-x-1/2 w-12 h-20"></div>
+</div>
+<div id="controls" class="absolute inset-0 flex">
+<div id="leftControl" class="w-1/2 h-full"></div>
+<div id="rightControl" class="w-1/2 h-full"></div>
+</div>
+<button id="pauseBtn" class="absolute top-4 right-4 text-white opacity-50 hover:opacity-100 cursor-pointer">
+<i class="ri-pause-line text-2xl"></i>
+</button>
+<div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white">
+<h1 class="text-4xl font-['Pacifico'] mb-8 text-primary">Speed Rush</h1>
+<p class="mb-8">Tap anywhere to start</p>
+<div class="flex flex-col space-y-4">
+<button class="px-6 py-2 bg-primary text-white rounded-button" onclick="startGame()">Start Game</button>
+<button class="px-6 py-2 bg-secondary text-white rounded-button" onclick="openShop()">Car Shop</button>
+</div>
+</div>
+<div id="shopScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white hidden">
+<h2 class="text-3xl mb-4">Car Shop</h2>
+<p class="mb-4">Total Coins: <span id="shopCoins">0</span></p>
+<div class="grid grid-cols-2 gap-4 mb-8 max-h-[400px] overflow-y-auto">
+<div class="car-option p-4 border rounded cursor-pointer" onclick="selectCar('default')">
+<div class="car w-12 h-20 mx-auto mb-2"></div>
+<p class="text-center">Classic Racer</p>
+<p class="text-center text-yellow-400">Owned</p>
+</div>
+<div class="car-option p-4 border rounded cursor-pointer" onclick="selectCar('neon')">
+<div class="car w-12 h-20 mx-auto mb-2 bg-blue-400 glow"></div>
+<p class="text-center">Neon Striker</p>
+<p class="text-center text-yellow-400">100 coins</p>
+</div>
+<div class="car-option p-4 border rounded cursor-pointer" onclick="selectCar('flame')">
+<div class="car w-12 h-20 mx-auto mb-2 bg-gradient-to-b from-red-500 to-yellow-500"></div>
+<p class="text-center">Flame Runner</p>
+<p class="text-center text-yellow-400">500 coins</p>
+</div>
+<div class="car-option p-4 border rounded cursor-pointer" onclick="selectCar('chrome')">
+<div class="car w-12 h-20 mx-auto mb-2 bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300"></div>
+<p class="text-center">Chrome Cruiser</p>
+<p class="text-center text-yellow-400">1,000 coins</p>
+</div>
+<div class="car-option p-4 border rounded cursor-pointer" onclick="selectCar('galaxy')">
+<div class="car w-12 h-20 mx-auto mb-2 bg-gradient-to-r from-purple-600 via-pink-500 to-blue-600"></div>
+<p class="text-center">Galaxy Glider</p>
+<p class="text-center text-yellow-400">5,000 coins</p>
+</div>
+</div>
+<button class="px-6 py-2 bg-secondary text-white rounded-button" onclick="closeShop()">Back</button>
+</div>
+<div id="gameOverScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white hidden">
+<h2 class="text-3xl mb-4">Game Over</h2>
+<p class="text-xl mb-2">Score: <span id="finalScore">0</span></p>
+<p class="text-xl mb-2">High Score: <span id="finalHighScore">0</span></p>
+<p class="text-xl mb-2">Distance: <span id="finalDistance">0</span>m</p>
+<p class="text-xl mb-2">Coins Collected: <span id="levelCoins">0</span></p>
+<p class="text-xl mb-8">Total Coins: <span id="totalCoins">0</span></p>
+<div class="flex flex-col space-y-4">
+<button id="restartBtn" class="px-6 py-2 bg-primary text-white rounded-button">Play Again</button>
+<button class="px-6 py-2 bg-secondary text-white rounded-button" onclick="openShopFromGameOver()">Car Shop</button>
+<button id="shareBtn" class="px-6 py-2 bg-secondary text-white rounded-button">Share Score</button>
+</div>
+</div>
+</div>
+<script>
+const car = document.getElementById('car');
+let gameStarted = false;
+let score = 0;
+let coins = 0;
+let speed = 60;
+let distance = 0;
+let lastTime = Date.now();
+let highScore = localStorage.getItem('highScore') || 0;
+let lanes = [50, 140, 230, 320];
+let difficulty = 1;
+let carSkins = {
+default: 'bg-primary',
+neon: 'bg-blue-400 glow',
+flame: 'bg-gradient-to-b from-red-500 to-yellow-500',
+chrome: 'bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300',
+galaxy: 'bg-gradient-to-r from-purple-600 via-pink-500 to-blue-600'
+};
+let carPrices = {
+default: 0,
+neon: 100,
+flame: 500,
+chrome: 1000,
+galaxy: 5000
+};
+let ownedSkins = ['default'];
+let currentSkin = 'default';
+document.addEventListener('keydown', (e) => {
+if(!gameStarted) return;
+const currentLeft = parseInt(getComputedStyle(car).left);
+if(e.key === 'ArrowLeft') {
+car.style.left = Math.max(85, currentLeft - 85) + 'px';
+}
+if(e.key === 'ArrowRight') {
+car.style.left = Math.min(340, currentLeft + 85) + 'px';
+}
+if(e.key === 'ArrowUp') {
+speed = Math.min(200, speed + 10);
+}
+if(e.key === 'ArrowDown') {
+speed = Math.max(30, speed - 10);
+}
+updateUI();
+});
+document.getElementById('leftControl').addEventListener('click', () => {
+if(!gameStarted) return;
+const currentLeft = parseInt(getComputedStyle(car).left);
+car.style.left = Math.max(85, currentLeft - 85) + 'px';
+});
+document.getElementById('rightControl').addEventListener('click', () => {
+if(!gameStarted) return;
+const currentLeft = parseInt(getComputedStyle(car).left);
+car.style.left = Math.min(340, currentLeft + 85) + 'px';
+});
+document.getElementById('startScreen').addEventListener('click', (e) => {
+if(e.target.tagName !== 'BUTTON') return;
+document.getElementById('startScreen').classList.add('hidden');
+gameStarted = true;
+startGame();
+});
+document.getElementById('restartBtn').addEventListener('click', () => {
+document.getElementById('gameOverScreen').classList.add('hidden');
+resetGame();
+gameLoop();
+spawnTraffic();
+spawnCoins();
+});
+function startGame() {
+gameStarted = true;
+lastTime = Date.now();
+gameLoop();
+spawnTraffic();
+spawnCoins();
+}
+async function resetGame() {
+gameStarted = true;
+score = 0;
+coins = 0;
+speed = 60;
+distance = 0;
+difficulty = 1;
+lastTime = Date.now();
+try {
+const response = await fetch('https://api.example.com/getcoins?userId=player1');
+if (response.ok) {
+const data = await response.json();
+document.getElementById('totalCoins').textContent = data.coins;
+}
+} catch (error) {
+console.error('Error loading total coins:', error);
+}
+updateUI();
+car.style.left = '50%';
+document.querySelectorAll('.traffic-car').forEach(car => car.remove());
+document.querySelectorAll('.coin').forEach(coin => coin.remove());
+}
+function spawnCoins() {
+if(!gameStarted) return;
+const coin = document.createElement('div');
+coin.className = 'coin';
+coin.style.left = lanes[Math.floor(Math.random() * lanes.length)] + 'px';
+coin.style.top = '-20px';
+document.getElementById('gameCanvas').appendChild(coin);
+const moveDown = () => {
+if(!gameStarted) return;
+const top = parseInt(getComputedStyle(coin).top);
+if(top > 667) {
+coin.remove();
+return;
+}
+coin.style.top = (top + 3) + 'px';
+checkCoinCollection(coin);
+requestAnimationFrame(moveDown);
+};
+moveDown();
+setTimeout(() => {
+if(gameStarted) spawnCoins();
+}, 3000);
+}
+function checkCoinCollection(coin) {
+const carRect = car.getBoundingClientRect();
+const coinRect = coin.getBoundingClientRect();
+if(!(carRect.right < coinRect.left ||
+carRect.left > coinRect.right ||
+carRect.bottom < coinRect.top ||
+carRect.top > coinRect.bottom)) {
+coins++;
+updateUI();
+coin.remove();
+}
+}
+function gameLoop() {
+if(!gameStarted) return;
+const currentTime = Date.now();
+const deltaTime = (currentTime - lastTime) / 1000;
+lastTime = currentTime;
+distance += speed * deltaTime / 1.5;
+score = Math.floor(distance);
+difficulty = 1 + score/1000;
+updateUI();
+requestAnimationFrame(gameLoop);
+}
+function openShop() {
+document.getElementById('shopScreen').classList.remove('hidden');
+document.getElementById('startScreen').classList.add('hidden');
+document.getElementById('shopCoins').textContent = coins;
+}
+function openShopFromGameOver() {
+document.getElementById('gameOverScreen').classList.add('hidden');
+document.getElementById('shopScreen').classList.remove('hidden');
+document.getElementById('shopCoins').textContent = coins;
+}
+function closeShop() {
+document.getElementById('shopScreen').classList.add('hidden');
+document.getElementById('startScreen').classList.remove('hidden');
+document.getElementById('gameOverScreen').classList.add('hidden');
+}
+function selectCar(skin) {
+if(ownedSkins.includes(skin)) {
+currentSkin = skin;
+car.className = `car absolute bottom-24 left-1/2 -translate-x-1/2 w-12 h-20 ${carSkins[skin]}`;
+updateUI();
+} else if(coins >= carPrices[skin]) {
+const remainingCoins = coins - carPrices[skin];
+if(remainingCoins >= 0) {
+coins = remainingCoins;
+ownedSkins.push(skin);
+currentSkin = skin;
+car.className = `car absolute bottom-24 left-1/2 -translate-x-1/2 w-12 h-20 ${carSkins[skin]}`;
+saveCoinsToCloud(coins);
+updateUI();
+updateShopUI();
+}
+}
+}
+function spawnTraffic() {
+if(!gameStarted) return;
+const trafficCar = document.createElement('div');
+trafficCar.className = 'traffic-car absolute w-12 h-20';
+const randomLane = lanes[Math.floor(Math.random() * lanes.length)];
+trafficCar.style.left = randomLane + 'px';
+trafficCar.style.top = '-80px';
+document.getElementById('gameCanvas').appendChild(trafficCar);
+const moveDown = () => {
+if(!gameStarted) return;
+const top = parseInt(getComputedStyle(trafficCar).top);
+if(top > 667) {
+trafficCar.remove();
+return;
+}
+trafficCar.style.top = (top + (5 * difficulty * (speed/60))) + 'px';
+checkCollision(trafficCar);
+requestAnimationFrame(moveDown);
+};
+moveDown();
+setTimeout(() => {
+if(gameStarted) spawnTraffic();
+}, Math.max(500, 2000 - difficulty * 200));
+}
+function checkCollision(trafficCar) {
+const carRect = car.getBoundingClientRect();
+const trafficRect = trafficCar.getBoundingClientRect();
+if(!(carRect.right < trafficRect.left ||
+carRect.left > trafficRect.right ||
+carRect.bottom < trafficRect.top ||
+carRect.top > trafficRect.bottom)) {
+handleCollision();
+}
+}
+function handleCollision() {
+gameOver();
+}
+function gameOver() {
+gameStarted = false;
+if(score > highScore) {
+highScore = score;
+localStorage.setItem('highScore', highScore);
+saveHighScoreToCloud(highScore);
+}
+saveCoinsToCloud(coins).then((totalCoins) => {
+document.getElementById('gameOverScreen').classList.remove('hidden');
+document.getElementById('finalScore').textContent = score;
+document.getElementById('finalHighScore').textContent = highScore;
+document.getElementById('finalDistance').textContent = Math.floor(distance);
+document.getElementById('levelCoins').textContent = coins;
+document.getElementById('totalCoins').textContent = totalCoins;
+});
+}
+async function saveHighScoreToCloud(score) {
+try {
+const response = await fetch('https://api.example.com/savescore', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+},
+body: JSON.stringify({
+score: score,
+timestamp: new Date().toISOString(),
+userId: 'player1' // In a real app, this would be the actual user ID
+})
+});
+if (!response.ok) {
+throw new Error('Failed to save high score');
+}
+} catch (error) {
+console.error('Error saving high score:', error);
+}
+}
+function updateUI() {
+document.getElementById('scoreValue').textContent = score;
+document.getElementById('coinsValue').textContent = coins;
+document.getElementById('speedValue').textContent = Math.floor(speed);
+document.getElementById('highScoreValue').textContent = highScore;
+document.getElementById('shopCoins').textContent = coins;
+document.documentElement.style.setProperty('--speed', speed);
+}
+function updateShopUI() {
+const shopContainer = document.querySelector('.grid');
+shopContainer.innerHTML = '';
+[['default', 'Classic Racer'], ['neon', 'Neon Striker'], ['flame', 'Flame Runner'], ['chrome', 'Chrome Cruiser'], ['galaxy', 'Galaxy Glider']].forEach(([skin, name]) => {
+const div = document.createElement('div');
+div.className = 'car-option p-4 border rounded cursor-pointer';
+div.onclick = () => selectCar(skin);
+div.innerHTML = `
+<div class="car w-12 h-20 mx-auto mb-2 ${carSkins[skin]}"></div>
+<p class="text-center">${name}</p>
+<p class="text-center text-yellow-400">${ownedSkins.includes(skin) ? 'Owned' : carPrices[skin] + ' coins'}</p>
+`;
+shopContainer.appendChild(div);
+});
+}
+let totalCoinsCollected = 0;
+async function saveCoinsToCloud(newCoins) {
+try {
+totalCoinsCollected += newCoins;
+const response = await fetch('https://api.example.com/savecoins', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+},
+body: JSON.stringify({
+coins: totalCoinsCollected,
+userId: 'player1'
+})
+});
+if (!response.ok) {
+throw new Error('Failed to save coins');
+}
+return totalCoinsCollected;
+} catch (error) {
+console.error('Error saving coins:', error);
+return totalCoinsCollected;
+}
+}
+window.onload = async function() {
+try {
+const response = await fetch('https://api.example.com/getcoins?userId=player1');
+if (response.ok) {
+const data = await response.json();
+totalCoinsCollected = data.coins || 0;
+coins = 0;
+updateUI();
+}
+} catch (error) {
+console.error('Error loading coins:', error);
+totalCoinsCollected = 0;
+}
+updateShopUI();
+}
+</script>
+</body>
+</html>
