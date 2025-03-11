@@ -96,7 +96,7 @@ Coins: <span id="coinsValue">0</span>
 <div id="leftControl" class="w-1/2 h-full"></div>
 <div id="rightControl" class="w-1/2 h-full"></div>
 </div>
-<button id="pauseBtn" class="absolute top-4 right-4 text-white opacity-50 hover:opacity-100 cursor-pointer">
+<button id="pauseBtn" class="absolute top-4 left-4 text-white opacity-50 hover:opacity-100 cursor-pointer" onclick="pauseGame()">
 <i class="ri-pause-line text-2xl"></i>
 </button>
 <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white">
@@ -138,6 +138,13 @@ Coins: <span id="coinsValue">0</span>
 </div>
 </div>
 <button class="px-6 py-2 bg-secondary text-white rounded-button" onclick="closeShop()">Back</button>
+</div>
+<div id="pauseMenu" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white hidden">
+<h2 class="text-3xl mb-8">Paused</h2>
+<div class="flex flex-col space-y-4">
+<button class="px-6 py-2 bg-primary text-white rounded-button" onclick="resumeGame()">Return to Game</button>
+<button class="px-6 py-2 bg-secondary text-white rounded-button" onclick="returnToMenu()">Return to Menu</button>
+</div>
 </div>
 <div id="gameOverScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white hidden">
 <h2 class="text-3xl mb-4">Game Over</h2>
@@ -221,11 +228,32 @@ spawnTraffic();
 spawnCoins();
 });
 function startGame() {
+document.getElementById('startScreen').classList.add('hidden');
 gameStarted = true;
 lastTime = Date.now();
 gameLoop();
 spawnTraffic();
 spawnCoins();
+}
+function pauseGame() {
+if(!gameStarted) return;
+gameStarted = false;
+document.getElementById('pauseMenu').classList.remove('hidden');
+document.querySelectorAll('.traffic-car').forEach(car => car.remove());
+document.querySelectorAll('.coin').forEach(coin => coin.remove());
+}
+function resumeGame() {
+document.getElementById('pauseMenu').classList.add('hidden');
+gameStarted = true;
+lastTime = Date.now();
+gameLoop();
+spawnTraffic();
+spawnCoins();
+}
+function returnToMenu() {
+document.getElementById('pauseMenu').classList.add('hidden');
+document.getElementById('startScreen').classList.remove('hidden');
+resetGame();
 }
 async function resetGame() {
 gameStarted = true;
